@@ -147,25 +147,24 @@
   }
 
   // ── Insert Into Word Document ──────────────────────────────────────────────
-  async function doInsertSignature() {
-    // Collect email (handles both auto-detected and manual input)
+   async function doInsertSignature() {
     const emailInput = document.getElementById('emailInput');
     if (emailInput && emailInput.value.trim()) {
       userEmail = emailInput.value.trim();
     }
-
     if (!userEmail) {
       showStatus('Please enter your email address first.', 'error');
       return;
     }
 
-    // Export canvas to base64 PNG
     const canvas = document.getElementById('sigCanvas');
     const base64 = canvas.toDataURL('image/png').split(',')[1];
 
-    const mode       = isAssessorMode ? 'Assessor' : 'Student';
-    const searchText = 'Signature and Date, ' + mode;
-    const dateStr    = new Date().toLocaleDateString('en-AU', {
+    const mode   = isAssessorMode ? 'Assessor' : 'Student';
+    const labels = isAssessorMode
+      ? ['Signature and Date, Assessor', 'Assessor Signature:']
+      : ['Signature and Date, Student',  'Student Signature:'];
+    const dateStr = new Date().toLocaleDateString('en-AU', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     });
 
@@ -173,50 +172,30 @@
 
     try {
       await Word.run(async function (context) {
-
-        // Search the document for matching signature labels
-        const searchResults = context.document.body.search(searchText, {
-          matchCase: false,
-          matchWholeWord: false
+        const results = labels.map(function (l) {
+          const r = context.document.body.search(l, { matchCase: false });
+          r.load('items');
+          return r;
         });
-        context.load(searchResults, 'items');
         await context.sync();
 
-        const count = searchResults.items.length;
+        const items = [];
+        results.forEach(function (r) { r.items.forEach(function (i) { items.push(i); }); });
 
-        if (count === 0) {
-          showStatus(
-            'No ' + mode + ' signature fields found in this document. ' +
-            'Make sure the document contains the text "' + searchText + '".',
-            'error'
-          );
+        if (items.length === 0) {
+          showStatus('No ' + mode + ' signature fields found. Looked for: ' + labels.join(' / '), 'error');
           return;
         }
 
-        // Insert signature image + email into each matching field
-        for (let i = 0; i < count; i++) {
-          const labelRange = searchResults.items[i];
-
-          // 1. Insert the drawn signature image right after the label text
+        items.forEach(function (labelRange) {
           labelRange.insertInlinePictureFromBase64(base64, 'End');
-
-          // 2. Append the email and date on the same line after the image
-          //    (Word queues these in order, so text follows the image)
-          labelRange.insertText(
-            '  ' + userEmail + '  |  ' + dateStr,
-            'End'
-          );
-        }
+          labelRange.insertText('  ' + userEmail + '  |  ' + dateStr, 'End');
+        });
 
         await context.sync();
-
-        showStatus(
-          '✓ Signature inserted into ' + count + ' ' +
-          mode.toLowerCase() + ' field' + (count !== 1 ? 's' : '') + '.',
-          'success'
-        );
+        showStatus('✓ Signature inserted into ' + items.length + ' ' +
+          mode.toLowerCase() + ' field' + (items.length !== 1 ? 's' : '') + '.', 'success');
       });
-
     } catch (err) {
       console.error(err);
       showStatus('Error: ' + (err.message || 'Something went wrong.'), 'error');
