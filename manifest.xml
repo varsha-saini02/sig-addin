@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+
+  <Id>3f8a2c1e-9b74-4d52-a6f3-7c01e85d2490</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>NCCS CADCAM</ProviderName>
+  <DefaultLocale>en-AU</DefaultLocale>
+  <DisplayName DefaultValue="Sign Document"/>
+  <Description DefaultValue="Draw and insert your signature into assessment record books"/>
+
+  <IconUrl DefaultValue="https://YOUR-DOMAIN/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://YOUR-DOMAIN/icon-80.png"/>
+  <SupportUrl DefaultValue="https://YOUR-DOMAIN"/>
+
+  <AppDomains>
+    <AppDomain>https://YOUR-DOMAIN</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Document"/>
+  </Hosts>
+
+  <Requirements>
+    <Sets DefaultMinVersion="1.3">
+      <Set Name="WordApi"/>
+    </Sets>
+  </Requirements>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://YOUR-DOMAIN/taskpane.html"/>
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <FunctionFile resid="Commands.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="SignatureGroup">
+                <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16"/>
+                  <bt:Image size="32" resid="Icon32"/>
+                  <bt:Image size="80" resid="Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="OpenPanelBtn">
+                  <Label resid="BtnLabel"/>
+                  <Supertip>
+                    <Title resid="BtnLabel"/>
+                    <Description resid="BtnTooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16"/>
+                    <bt:Image size="32" resid="Icon32"/>
+                    <bt:Image size="80" resid="Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>SignPanel</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon16" DefaultValue="https://YOUR-DOMAIN/icon-16.png"/>
+        <bt:Image id="Icon32" DefaultValue="https://YOUR-DOMAIN/icon-32.png"/>
+        <bt:Image id="Icon80" DefaultValue="https://YOUR-DOMAIN/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Commands.Url" DefaultValue="https://YOUR-DOMAIN/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR-DOMAIN/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GroupLabel" DefaultValue="Signatures"/>
+        <bt:String id="BtnLabel" DefaultValue="Sign Document"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="BtnTooltip" DefaultValue="Open the signature panel to draw and insert your signature."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
