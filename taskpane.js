@@ -147,7 +147,7 @@
   }
 
   // ── Insert Into Word Document ──────────────────────────────────────────────
-     async function doInsertSignature() {
+      async function doInsertSignature() {
     const emailInput = document.getElementById('emailInput');
     if (emailInput && emailInput.value.trim()) {
       userEmail = emailInput.value.trim();
@@ -167,8 +167,6 @@
     const dateStr = new Date().toLocaleDateString('en-AU', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     });
-    const modePrefix = 'sig|' + mode + '|';
-    const myTag      = modePrefix + userEmail.toLowerCase();
 
     showStatus('Finding ' + mode.toLowerCase() + ' signature fields…', 'info');
 
@@ -189,53 +187,19 @@
           return;
         }
 
-        // Load existing signature wrappers in each field's paragraph
-        const ccLists = items.map(function (it) {
-          const ccs = it.paragraphs.getFirst().contentControls;
-          ccs.load('items/tag');
-          return ccs;
-        });
-        await context.sync();
-
-        let signed = 0, replaced = 0, skipped = 0;
-
-        items.forEach(function (labelRange, idx) {
-          const existing = ccLists[idx].items;
-          const own    = existing.filter(function (c) { return c.tag === myTag; });
-          const others = existing.filter(function (c) {
-            return c.tag.indexOf(modePrefix) === 0 && c.tag !== myTag;
-          });
-
-          // Someone else already signed this field: leave it alone
-          if (others.length > 0 && own.length === 0) { skipped++; return; }
-
-          // Remove my previous signature so the new one replaces it
-          if (own.length > 0) {
-            own.forEach(function (c) { c.delete(false); });
-            replaced++;
-          } else {
-            signed++;
-          }
-
-          const cc = labelRange.getRange('End').insertContentControl();
-          cc.tag = myTag;
-          cc.title = 'Signature';
-          cc.appearance = 'Hidden';
-          cc.insertInlinePictureFromBase64(base64, 'Start');
-          cc.insertText('  ' + userEmail + '  |  ' + dateStr, 'End');
+        items.forEach(function (labelRange) {
+          labelRange.insertInlinePictureFromBase64(base64, 'End');
+          labelRange.insertText('  ' + userEmail + '  |  ' + dateStr, 'End');
         });
 
         await context.sync();
-
-        const parts = [];
-        if (signed)   parts.push('signed ' + signed);
-        if (replaced) parts.push('replaced ' + replaced);
-        if (skipped)  parts.push(skipped + ' skipped (already signed by someone else)');
-        showStatus('✓ ' + mode + ': ' + parts.join(', ') + '.', 'success');
+        showStatus('✓ Signature inserted into ' + items.length + ' ' +
+          mode.toLowerCase() + ' field' + (items.length !== 1 ? 's' : '') + '.', 'success');
       });
     } catch (err) {
       console.error(err);
-      showStatus('Error: ' + (err.message || 'Something went wrong.'), 'error');
+      var msg = (err && err.message) ? err.message : 'Something went wrong.';
+      showStatus('Error: ' + msg, 'error');
     }
   }
 
