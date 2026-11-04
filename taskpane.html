@@ -1,193 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign Document</title>
-  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f3f3f3;
-      color: #1a1a1a;
-      font-size: 14px;
-    }
-
-    /* ── Header ── */
-    .header {
-      background: #0078d4;
-      color: #fff;
-      padding: 14px 16px;
-    }
-    .header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
-    .header p  { font-size: 11px; opacity: 0.85; margin-top: 2px; }
-
-    /* ── Cards ── */
-    .card {
-      background: #fff;
-      border-radius: 6px;
-      padding: 14px;
-      margin: 12px 12px 0;
-      box-shadow: 0 1px 3px rgba(0,0,0,.10);
-    }
-    .card-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #888;
-      margin-bottom: 10px;
-    }
-
-    /* ── Toggle ── */
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .mode-badge {
-      font-size: 15px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 20px;
-      transition: all .25s;
-    }
-    .mode-badge.student  { background: #deeffe; color: #0063b1; }
-    .mode-badge.assessor { background: #dff6dd; color: #0e6b0e; }
-
-    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #0078d4;
-      border-radius: 26px;
-      transition: .3s;
-    }
-    .slider::before {
-      content: '';
-      position: absolute;
-      height: 18px; width: 18px;
-      left: 4px; bottom: 4px;
-      background: #fff;
-      border-radius: 50%;
-      transition: .3s;
-    }
-    input:checked + .slider                { background: #107c10; }
-    input:checked + .slider::before        { transform: translateX(24px); }
-    .toggle-hint { font-size: 11px; color: #aaa; margin-top: 8px; }
-
-    /* ── Canvas ── */
-    #sigCanvas {
-      display: block;
-      width: 100%;
-      height: 150px;
-      border: 2px dashed #c8c8c8;
-      border-radius: 6px;
-      cursor: crosshair;
-      background: #fafafa;
-      touch-action: none;
-    }
-    #sigCanvas.active { border: 2px solid #0078d4; }
-    .canvas-hint { font-size: 11px; color: #bbb; text-align: center; margin-top: 6px; }
-
-    /* ── Email ── */
-    .email-val {
-      font-size: 13px;
-      font-weight: 500;
-      color: #333;
-      word-break: break-all;
-    }
-    .email-input {
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 7px 9px;
-      font-size: 13px;
-      color: #333;
-      outline: none;
-    }
-    .email-input:focus { border-color: #0078d4; }
-
-    /* ── Buttons ── */
-    .actions { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-
-    .btn {
-      width: 100%;
-      padding: 11px;
-      border: none;
-      border-radius: 5px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn:disabled { opacity: .38; cursor: not-allowed; }
-    .btn:active:not(:disabled) { transform: scale(.98); }
-
-    .btn-insert          { background: #0078d4; color: #fff; }
-    .btn-insert.assessor { background: #107c10; }
-    .btn-insert:hover:not(:disabled) { opacity: .88; }
-
-    .btn-clear { background: #e8e8e8; color: #333; }
-    .btn-clear:hover:not(:disabled) { background: #d8d8d8; }
-
-    /* ── Status ── */
-    .status {
-      margin: 0 12px 12px;
-      padding: 10px 12px;
-      border-radius: 5px;
-      font-size: 13px;
-      display: none;
-    }
-    .status.success { background: #dff6dd; color: #107c10; display: block; }
-    .status.error   { background: #fde7e9; color: #c50f1f; display: block; }
-    .status.info    { background: #eff6fc; color: #0078d4; display: block; }
-  </style>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<title>Signature Add-in DEV - Step 2</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; margin: 10px; }
+  h3 { margin: 4px 0 8px; }
+  fieldset { border: 1px solid #ccc; margin: 0 0 10px; padding: 8px; }
+  button { margin: 2px 4px 2px 0; padding: 5px 10px; }
+  textarea { width: 100%; height: 360px; box-sizing: border-box;
+             font-family: Consolas, "Courier New", monospace; font-size: 11px;
+             white-space: pre; overflow: auto; }
+  .note { color: #666; font-size: 11px; margin-bottom: 4px; }
+  #status { margin-left: 6px; color: #1a3d8f; }
+</style>
 </head>
 <body>
+  <h3>DEV build - Step 2 tests</h3>
 
-  <div class="header">
-    <h1>Sign Document</h1>
-    <p>Draw your signature and insert it into the assessment</p>
-  </div>
+  <fieldset>
+    <legend>1. Scan test</legend>
+    <label>Compare with:
+      <select id="expected">
+        <option value="">(none)</option>
+        <option>MEM09009</option>
+        <option>MEM11011</option>
+        <option>MEM07005</option>
+      </select>
+    </label><br>
+    <label><input type="checkbox" id="trace" checked> Show trace</label><br>
+    <button id="btnScan">Scan document</button>
+  </fieldset>
 
-  <!-- Mode Toggle -->
-  <div class="card">
-    <div class="card-label">Signing as</div>
-    <div class="toggle-row">
-      <span class="mode-badge student" id="modeBadge">Student</span>
-      <label class="switch">
-        <input type="checkbox" id="modeToggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <p class="toggle-hint">Default is Student. Assessors flip the switch.</p>
-  </div>
+  <fieldset>
+    <legend>2. Alt text test</legend>
+    <div class="note">Click an empty spot in the document first. Insert, wait for "Saved",
+      close and reopen the document, open this panel again, then Read back.</div>
+    <button id="btnInsertTest">Insert test picture</button>
+    <button id="btnReadBack">Read back pictures</button>
+  </fieldset>
 
-  <!-- Signature Canvas -->
-  <div class="card">
-    <div class="card-label">Draw your signature</div>
-    <canvas id="sigCanvas"></canvas>
-    <p class="canvas-hint">Use your mouse or finger on a touchscreen</p>
-  </div>
+  <button id="btnCopy">Copy output</button><span id="status"></span>
+  <textarea id="out" readonly></textarea>
 
-  <!-- Email -->
-  <div class="card">
-    <div class="card-label">Your login email (captured automatically)</div>
-    <div class="email-val" id="emailDisplay">Detecting…</div>
-  </div>
-
-  <!-- Buttons -->
-  <div class="actions">
-    <button class="btn btn-insert" id="insertBtn" disabled>Insert Signature</button>
-    <button class="btn btn-clear"  id="clearBtn">Clear</button>
-  </div>
-
-  <div class="status" id="statusMsg"></div>
-
-  <script src="taskpane.js"></script>
+  <script src="taskpane.js?v=step2a"></script>
 </body>
 </html>
