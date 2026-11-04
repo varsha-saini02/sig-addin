@@ -6,19 +6,19 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
 
-  <Id>3f8a2c1e-9b74-4d52-a6f3-7c01e85d2490</Id>
+  <Id>7c3e9a2b-4f1d-4e8a-9b6c-2d5f8a1e3c47</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>NCCS CADCAM</ProviderName>
   <DefaultLocale>en-AU</DefaultLocale>
-  <DisplayName DefaultValue="Sign Document"/>
-  <Description DefaultValue="Draw and insert your signature into assessment record books"/>
+  <DisplayName DefaultValue="Sign Document DEV"/>
+  <Description DefaultValue="DEVELOPMENT build - not for students"/>
 
-  <IconUrl DefaultValue="https://YOUR-DOMAIN/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://YOUR-DOMAIN/icon-80.png"/>
-  <SupportUrl DefaultValue="https://YOUR-DOMAIN"/>
+  <IconUrl DefaultValue="https://varsha-saini02.github.io/sig-addin/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://varsha-saini02.github.io/sig-addin/icon-80.png"/>
+  <SupportUrl DefaultValue="https://varsha-saini02.github.io/sig-addin"/>
 
   <AppDomains>
-    <AppDomain>https://YOUR-DOMAIN</AppDomain>
+    <AppDomain>https://varsha-saini02.github.io</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -32,7 +32,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://YOUR-DOMAIN/taskpane.html"/>
+    <SourceLocation DefaultValue="https://varsha-saini02.github.io/sig-addin/dev/taskpane.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -44,14 +44,14 @@
           <FunctionFile resid="Commands.Url"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
-              <Group id="SignatureGroup">
+              <Group id="SignatureGroupDev">
                 <Label resid="GroupLabel"/>
                 <Icon>
                   <bt:Image size="16" resid="Icon16"/>
                   <bt:Image size="32" resid="Icon32"/>
                   <bt:Image size="80" resid="Icon80"/>
                 </Icon>
-                <Control xsi:type="Button" id="OpenPanelBtn">
+                <Control xsi:type="Button" id="OpenPanelBtnDev">
                   <Label resid="BtnLabel"/>
                   <Supertip>
                     <Title resid="BtnLabel"/>
@@ -63,7 +63,7 @@
                     <bt:Image size="80" resid="Icon80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>SignPanel</TaskpaneId>
+                    <TaskpaneId>SignPanelDev</TaskpaneId>
                     <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
@@ -75,20 +75,20 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon16" DefaultValue="https://YOUR-DOMAIN/icon-16.png"/>
-        <bt:Image id="Icon32" DefaultValue="https://YOUR-DOMAIN/icon-32.png"/>
-        <bt:Image id="Icon80" DefaultValue="https://YOUR-DOMAIN/icon-80.png"/>
+        <bt:Image id="Icon16" DefaultValue="https://varsha-saini02.github.io/sig-addin/icon-16.png"/>
+        <bt:Image id="Icon32" DefaultValue="https://varsha-saini02.github.io/sig-addin/icon-32.png"/>
+        <bt:Image id="Icon80" DefaultValue="https://varsha-saini02.github.io/sig-addin/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://YOUR-DOMAIN/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR-DOMAIN/taskpane.html"/>
+        <bt:Url id="Commands.Url" DefaultValue="https://varsha-saini02.github.io/sig-addin/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://varsha-saini02.github.io/sig-addin/dev/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="Signatures"/>
-        <bt:String id="BtnLabel" DefaultValue="Sign Document"/>
+        <bt:String id="GroupLabel" DefaultValue="Signatures DEV"/>
+        <bt:String id="BtnLabel" DefaultValue="Sign DEV"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="BtnTooltip" DefaultValue="Open the signature panel to draw and insert your signature."/>
+        <bt:String id="BtnTooltip" DefaultValue="Development build: Step 2 scan and alt text tests."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
