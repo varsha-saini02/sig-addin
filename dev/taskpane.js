@@ -1,18 +1,16 @@
 "use strict";
 
 /* =============================================================
-   Word Signature Add-in - DEV build, Step 3d (+ dark mode)
+   Word Signature Add-in - DEV build, Step 3e (+ dark mode)
    NCCS CADCAM
    Scan any record book -> choose fields -> draw -> sign.
-   Step 3d: a next cell is used only if it is at least MIN_CELL_W_PT
-            wide (narrow spacer cells fall back to label end);
-            next cell never holds another label; signed check matches
-            the role in the SIG tag; switching role clears the drawing.
+   Step 3e: adds "Sign here (cursor)" to sign the spot the cursor is in.
+   Step 3d: narrow next cells (under MIN_CELL_W_PT) use label end.
    ============================================================= */
 
 /* ---------- CONFIG: all wording and rules in one place ---------- */
 const CONFIG = {
-  BUILD: "step3d",       // shown at the end of the Developer box first line
+  BUILD: "step3e",       // shown at the end of the Developer box first line
   MAX_LINE: 60,          // longer lines are never labels or headings
   MAX_PLAIN_SIG: 25,     // a role-less "Signature" line must be this short to be guessed
   LOOKBACK: 8,           // non-empty lines to look back for a role word
@@ -551,6 +549,53 @@ async function doSign() {
   showStatus(msg, "success");
 }
 
+/* ---------- sign here: sign the spot where the cursor is ---------- */
+async function doSignHere() {
+  const email = $("emailInput").value.trim();
+  if (!EMAIL_OK.test(email)) { showStatus("Please enter a valid email address.", "error"); return; }
+  if (!hasSignature) { showStatus("Please draw your signature first.", "error"); return; }
+
+  const img = getSignatureImage();
+  if (!img) { showStatus("Please draw your signature first.", "error"); return; }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const stamp = "  " + email + " | " + dateStr;
+  const tag = CONFIG.SIG_TAG + role + "|" + email + "|" + now.toISOString();
+
+  await Word.run(async context => {
+    const sel = context.document.getSelection();
+    const para = sel.paragraphs.getFirst();
+    para.load("text");
+    const cell = sel.parentTableCellOrNullObject;
+    cell.load("isNullObject,value");
+    await context.sync();
+
+    // Warn (do not block) if the spot is labelled for the other role
+    const here = lineOf(para.text) + " " + (cell.isNullObject ? "" : lineOf(cell.value));
+    const otherRole = role === "student" ? "assessor" : "student";
+    if (roleOf(here) === otherRole) {
+      let ok = true;
+      try {
+        ok = window.confirm("This spot is labelled for the " + otherRole + ". Sign here anyway?");
+      } catch (e) { ok = true; }
+      if (!ok) throw userError("Cancelled. Nothing was signed.");
+    }
+
+    const pic = sel.insertInlinePictureFromBase64(img.b64, "End");
+    pic.width = img.wPt;
+    pic.height = img.hPt;
+    pic.altTextDescription = tag;
+    pic.altTextTitle = "SIG";
+    pic.insertText(stamp, "After");
+    await context.sync();
+  });
+
+  try { localStorage.setItem(CONFIG.EMAIL_KEY, email); } catch (e) { /* storage blocked */ }
+  await runScan(true);
+  showStatus("Signed at the cursor spot as " + roleName().toLowerCase() + ".", "success");
+}
+
 /* ---------- sign button state ---------- */
 function updateSignBtn() {
   const n = selectedFields().length;
@@ -700,6 +745,8 @@ function setBusy(b) {
   busy = b;
   $("scanBtn").disabled = b;
   $("clearBtn").disabled = b;
+  const h = $("signHereBtn");
+  if (h) h.disabled = b;
   updateSignBtn();
 }
 
@@ -779,6 +826,16 @@ Office.onReady(info => {
   $("clearBtn").addEventListener("click", clearCanvas);
   $("scanBtn").addEventListener("click", () => guarded(() => runScan(false)));
   $("signBtn").addEventListener("click", () => guarded(doSign));
+
+  // Sign here button: created here so taskpane.html needs no change
+  const hereBtn = document.createElement("button");
+  hereBtn.id = "signHereBtn";
+  hereBtn.className = "btn";
+  hereBtn.textContent = "Sign here (cursor)";
+  hereBtn.title = "Click inside a cell in Word, then press this to sign that spot";
+  hereBtn.addEventListener("click", () => guarded(doSignHere));
+  $("signBtn").insertAdjacentElement("afterend", hereBtn);
+
   $("copyDevBtn").addEventListener("click", copyDev);
   updateSignBtn();
   guarded(() => runScan(true));     // list appears as soon as the panel opens
