@@ -1,17 +1,18 @@
 "use strict";
 
 /* =============================================================
-   Word Signature Add-in - DEV build, Step 3c (+ dark mode)
+   Word Signature Add-in - DEV build, Step 3d (+ dark mode)
    NCCS CADCAM
    Scan any record book -> choose fields -> draw -> sign.
-   Step 3c: next-cell target never uses a cell holding another label;
-            signed check matches the role in the SIG tag;
-            switching role clears the drawing.
+   Step 3d: a next cell is used only if it is at least MIN_CELL_W_PT
+            wide (narrow spacer cells fall back to label end);
+            next cell never holds another label; signed check matches
+            the role in the SIG tag; switching role clears the drawing.
    ============================================================= */
 
 /* ---------- CONFIG: all wording and rules in one place ---------- */
 const CONFIG = {
-  BUILD: "step3c",       // shown at the end of the Developer box first line
+  BUILD: "step3d",       // shown at the end of the Developer box first line
   MAX_LINE: 60,          // longer lines are never labels or headings
   MAX_PLAIN_SIG: 25,     // a role-less "Signature" line must be this short to be guessed
   LOOKBACK: 8,           // non-empty lines to look back for a role word
@@ -31,6 +32,7 @@ const CONFIG = {
   SIG_TAG: "SIG|",
   SIG_MAX_W_PT: 120,     // inserted signature size limits (points)
   SIG_MAX_H_PT: 30,
+  MIN_CELL_W_PT: 80,     // a next cell narrower than this is a spacer, not a signing space
   SIG_INK: "#1a1a1a",    // ink colour (canvas is always white)
   EMAIL_KEY: "nccsSig.email",
   THEME_KEY: "nccsSig.theme"
@@ -261,7 +263,7 @@ async function scanFields(context) {
   const nexts = cells.map(c => {
     if (c.isNullObject) return null;
     const n = c.getNextOrNullObject();
-    n.load("rowIndex,cellIndex,value");
+    n.load("rowIndex,cellIndex,value,columnWidth");
     return n;
   });
   await context.sync();
@@ -280,10 +282,12 @@ async function scanFields(context) {
   });
   await context.sync();
 
-  /* Decide target (step3c):
-     next cell ONLY if it holds no label text, no other-role signature,
-     and is either empty or holds our signature for THIS role.
-     Otherwise sign at the end of the label paragraph. */
+  /* Decide target (step3d):
+     next cell ONLY if it is wide enough (MIN_CELL_W_PT), holds no label
+     text, no other-role signature, and is either empty or holds our
+     signature for THIS role. Otherwise sign at the end of the label
+     paragraph. If Word does not report a width, the width test is
+     skipped (shown as "-" in the Developer box). */
   fields.forEach((f, k) => {
     let pics = labelPics[k].items;
     f.target = "label end";
@@ -291,11 +295,14 @@ async function scanFields(context) {
     f._cell = null;
     if (nextCell[k]) {
       const cp = cellPics[k].items;
+      const w = nextCell[k].columnWidth;
+      f.nextW = w ? Math.round(w) : 0;
+      const wideEnough = !f.nextW || f.nextW >= CONFIG.MIN_CELL_W_PT;
       const cellText = lineOf(nextCell[k].value);
       const isLabel = looksLikeLabel(cellText);
       const otherSig = cp.some(p => isSigPic(p) && sigRoleOf(p) !== f.role);
       const ourSig = cp.some(p => isOurSigFor(p, f.role));
-      if (!isLabel && !otherSig && (cellText === "" || ourSig)) {
+      if (wideEnough && !isLabel && !otherSig && (cellText === "" || ourSig)) {
         f.target = "next cell"; f._cell = nextCell[k]; pics = cp;
       }
     }
@@ -734,12 +741,13 @@ function devReport(ms) {
   L.push("Student " + s.student + " (reassess " + s.reStudent + ")   Assessor " + s.assessor +
          " (reassess " + s.reAssessor + ")   guessed " + s.guessed + "   signed " + s.signed);
   L.push("");
-  L.push("flags: R=reassess G=guessed S=signed P=other picture");
+  L.push("flags: R=reassess G=guessed S=signed P=other picture   width = next cell width in pt");
   f.forEach((x, n) => {
     const flags = (x.isReassessment ? "R" : "-") + (x.guessed ? "G" : "-") +
                   (x.signed ? "S" : "-") + (x.otherPics ? "P" : "-");
     L.push(pad(n + 1, 3) + (checked.get(x.key) ? "[x] " : "[ ] ") + "p" + pad(x.index, 5) +
            pad(x.section, 22) + pad(x.role.toUpperCase(), 9) + pad(x.target, 10) +
+           pad(x.nextW ? x.nextW + "pt" : "-", 7) +
            flags + '  "' + clip(x.label, 40) + '"');
   });
   devText = L.join("\n");
