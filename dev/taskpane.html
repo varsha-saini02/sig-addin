@@ -134,6 +134,14 @@
       transition: opacity .2s, transform .1s;
     }
     .btn:disabled { opacity: .38; cursor: not-allowed; }
+        /* Sign here: separate from the main Sign button */
+    #signHereBtn {
+      margin-top: 10px;
+      background: var(--sec-bg);
+      color: var(--sec-text);
+      border: 1px solid var(--border);
+    }
+    #signHereBtn:hover:not(:disabled) { background: var(--sec-hover); }
     .btn:active:not(:disabled) { transform: scale(.98); }
     .btn-insert          { background: #0078d4; color: #fff; }
     .btn-insert.assessor { background: #107c10; }
