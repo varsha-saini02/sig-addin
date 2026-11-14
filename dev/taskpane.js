@@ -1,9 +1,10 @@
 "use strict";
 
 /* =============================================================
-   Word Signature Add-in - DEV build, Step 3f (+ dark mode)
+   Word Signature Add-in - DEV build, Step 3f2 (+ dark mode)
    NCCS CADCAM
    Scan any record book -> choose fields -> draw or upload -> sign.
+   Step 3f2: upload size log in the Developer box.
    Step 3f: adds "Upload image" (PNG or JPG) as an alternative to drawing.
    Step 3e: adds "Sign here (cursor)" to sign the spot the cursor is in.
    Step 3d: narrow next cells (under MIN_CELL_W_PT) use label end.
@@ -11,7 +12,7 @@
 
 /* ---------- CONFIG: all wording and rules in one place ---------- */
 const CONFIG = {
-  BUILD: "step3f",       // shown at the end of the Developer box first line
+  BUILD: "step3f2",      // shown at the end of the Developer box first line
   MAX_LINE: 60,          // longer lines are never labels or headings
   MAX_PLAIN_SIG: 25,     // a role-less "Signature" line must be this short to be guessed
   LOOKBACK: 8,           // non-empty lines to look back for a role word
@@ -59,6 +60,7 @@ let scanState = null;          // { fields: [plain objects], paraCount }
 let checked = new Map();       // field key -> ticked?
 let hasSignature = false;
 let upload = null;             // { b64, wPt, hPt } when an image was uploaded, else null
+let upInfo = "";               // size log for the Developer box
 let busy = false;
 let canvas, ctx;
 let devText = "", devErr = "";
@@ -568,6 +570,8 @@ function makeUploadImage(im) {
   const png = out.toDataURL("image/png");
   return {
     preview: png,
+    info: "original " + im.naturalWidth + "x" + im.naturalHeight + "px, ink " + cw + "x" + ch +
+          "px (ratio " + (cw / ch).toFixed(2) + "), placed " + wPt.toFixed(1) + " x " + hPt.toFixed(1) + " pt",
     img: {
       b64: png.split(",")[1],             // no data: prefix
       wPt: Math.round(wPt * 10) / 10,
@@ -588,6 +592,7 @@ function showUpload(made) {
   pv.src = made.preview;
   pv.hidden = false;
   upload = made.img;
+  upInfo = made.info;
   hasSignature = true;
   updateSignBtn();
 }
@@ -814,6 +819,7 @@ function clearCanvas() {
   canvas.classList.remove("active");
   // Remove any uploaded image and show the drawing pad again
   upload = null;
+  upInfo = "";
   const pv = $("upPreview");
   pv.removeAttribute("src");
   pv.hidden = true;
@@ -915,6 +921,8 @@ function devReport(ms) {
   L.push("Paragraphs " + scanState.paraCount + "   Fields " + f.length + "   (" + ms + " ms)");
   L.push("Student " + s.student + " (reassess " + s.reStudent + ")   Assessor " + s.assessor +
          " (reassess " + s.reAssessor + ")   guessed " + s.guessed + "   signed " + s.signed);
+  L.push("");
+  L.push("Upload " + (upload ? upInfo : "none"));
   L.push("");
   L.push("flags: R=reassess G=guessed S=signed P=other picture   width = next cell width in pt");
   f.forEach((x, n) => {
