@@ -48,6 +48,9 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* The hidden attribute must win over the display rules below */
+    [hidden] { display: none !important; }
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: var(--bg);
@@ -118,6 +121,13 @@
       cursor: crosshair; background: #ffffff; touch-action: none;
     }
     #sigCanvas.active { border: 2px solid var(--accent); }
+
+    /* Uploaded image preview: shown in place of the drawing pad */
+    .up-preview {
+      display: block; width: 100%; height: 150px; object-fit: contain;
+      border: 2px solid var(--accent); border-radius: 6px; background: #ffffff;
+    }
+
     .canvas-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
     .canvas-hint { font-size: 11px; color: var(--muted); }
     .link-btn {
@@ -134,7 +144,7 @@
       transition: opacity .2s, transform .1s;
     }
     .btn:disabled { opacity: .38; cursor: not-allowed; }
-        /* Sign here: separate from the main Sign button */
+    /* Sign here: separate from the main Sign button */
     #signHereBtn {
       margin-top: 10px;
       background: var(--sec-bg);
@@ -191,7 +201,7 @@
   <div class="header">
     <div>
       <h1>Sign Document <span class="dev-tag">DEV</span></h1>
-      <p>Draw your signature, choose where it goes, then sign</p>
+      <p>Draw or upload your signature, choose where it goes, then sign</p>
     </div>
     <button class="theme-btn" id="themeBtn" title="Switch panel colours">Theme: Auto</button>
   </div>
@@ -206,7 +216,7 @@
         <span class="slider"></span>
       </label>
     </div>
-    <p class="hint">Default is Student. Assessors flip the switch. Switching clears the drawing.</p>
+    <p class="hint">Default is Student. Assessors flip the switch. Switching clears the signature.</p>
   </div>
 
   <!-- Email -->
@@ -218,12 +228,17 @@
 
   <!-- Signature -->
   <div class="card">
-    <div class="card-label">Draw your signature</div>
+    <div class="card-label">Draw or upload your signature</div>
     <canvas id="sigCanvas"></canvas>
+    <img id="upPreview" class="up-preview" alt="Uploaded signature" hidden>
     <div class="canvas-row">
-      <span class="canvas-hint">Use your mouse, pen or finger</span>
-      <button class="link-btn" id="clearBtn">Clear</button>
+      <span class="canvas-hint">Draw with mouse, pen or finger</span>
+      <span>
+        <button class="link-btn" id="uploadBtn">Upload image</button>
+        <button class="link-btn" id="clearBtn">Clear</button>
+      </span>
     </div>
+    <input type="file" id="upFile" accept="image/png,image/jpeg" hidden>
   </div>
 
   <!-- Fields -->
@@ -247,6 +262,6 @@
     <textarea id="devOut" readonly></textarea>
   </details>
 
-  <script src="taskpane.js?v=step3e2"></script>
+  <script src="taskpane.js?v=step3f"></script>
 </body>
 </html>
