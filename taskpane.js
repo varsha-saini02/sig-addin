@@ -1,16 +1,18 @@
 "use strict";
 
 /* =============================================================
-   Word Signature Add-in - DEV build, Step 3e (+ dark mode)
+   Word Signature Add-in - DEV build, Step 3f2 (+ dark mode)
    NCCS CADCAM
-   Scan any record book -> choose fields -> draw -> sign.
+   Scan any record book -> choose fields -> draw or upload -> sign.
+   Step 3f2: upload size log in the Developer box.
+   Step 3f: adds "Upload image" (PNG or JPG) as an alternative to drawing.
    Step 3e: adds "Sign here (cursor)" to sign the spot the cursor is in.
    Step 3d: narrow next cells (under MIN_CELL_W_PT) use label end.
    ============================================================= */
 
 /* ---------- CONFIG: all wording and rules in one place ---------- */
 const CONFIG = {
-  BUILD: "step3e",       // shown at the end of the Developer box first line
+  BUILD: "step3f2",      // shown at the end of the Developer box first line
   MAX_LINE: 60,          // longer lines are never labels or headings
   MAX_PLAIN_SIG: 25,     // a role-less "Signature" line must be this short to be guessed
   LOOKBACK: 8,           // non-empty lines to look back for a role word
@@ -38,6 +40,14 @@ const CONFIG = {
 
 const EMAIL_OK = /^[^\s@|]+@[^\s@|]+\.[^\s@|]+$/;
 
+// Uploaded signature image rules
+const UPLOAD = {
+  MAX_BYTES: 2 * 1024 * 1024,   // 2 MB limit for the picture file
+  TYPES: ["image/png", "image/jpeg"],
+  PX_PER_PT: 4,                 // stored picture resolution (pixels per point)
+  INK_LIMIT: 500                // r+g+b below this counts as ink (max 765); lighter is paper
+};
+
 const ROLE_RE = {};
 for (const r in CONFIG.ROLE_WORDS) {
   ROLE_RE[r] = new RegExp("\\b(?:" + CONFIG.ROLE_WORDS[r].join("|") + ")s?\\b");
@@ -49,6 +59,8 @@ let role = "student";
 let scanState = null;          // { fields: [plain objects], paraCount }
 let checked = new Map();       // field key -> ticked?
 let hasSignature = false;
+let upload = null;             // { b64, wPt, hPt } when an image was uploaded, else null
+let upInfo = "";               // size log for the Developer box
 let busy = false;
 let canvas, ctx;
 let devText = "", devErr = "";
@@ -447,6 +459,8 @@ async function goTo(f) {
 
 /* ---------- signature image ---------- */
 function getSignatureImage() {
+  if (upload) return upload;     // an uploaded picture replaces the drawing
+
   const w = canvas.width, h = canvas.height;
   if (!w || !h) return null;
   const data = ctx.getImageData(0, 0, w, h).data;
@@ -488,17 +502,127 @@ function getSignatureImage() {
   };
 }
 
+/* ---------- uploaded signature image ---------- */
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); resolve(im); };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(userError("That file could not be read as an image.")); };
+    im.src = url;
+  });
+}
+
+// Turns an uploaded picture into the same kind of result as getSignatureImage():
+// white background, blank margins removed, fitted to the signature box.
+function makeUploadImage(im) {
+  // 1. Draw the whole picture on white, so transparent areas become white
+  const cap = 2000;                       // limits the size of very large photos
+  const s0 = Math.min(1, cap / Math.max(im.naturalWidth, im.naturalHeight));
+  const w0 = Math.max(1, Math.round(im.naturalWidth * s0));
+  const h0 = Math.max(1, Math.round(im.naturalHeight * s0));
+  const src = document.createElement("canvas");
+  src.width = w0; src.height = h0;
+  const sc = src.getContext("2d");
+  sc.fillStyle = "#ffffff";
+  sc.fillRect(0, 0, w0, h0);
+  sc.drawImage(im, 0, 0, w0, h0);
+
+  // 2. Find the ink: pixels that are not near-white
+  const data = sc.getImageData(0, 0, w0, h0).data;
+  let minX = w0, minY = h0, maxX = -1, maxY = -1;
+  for (let y = 0; y < h0; y++) {
+    for (let x = 0; x < w0; x++) {
+      const i = (y * w0 + x) * 4;
+      if (data[i] + data[i + 1] + data[i + 2] < UPLOAD.INK_LIMIT) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) throw userError("That picture looks blank. Choose a different image.");
+
+  // 3. Crop with a small margin
+  const pad = 6;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(w0 - 1, maxX + pad); maxY = Math.min(h0 - 1, maxY + pad);
+  const cw = maxX - minX + 1, ch = maxY - minY + 1;
+
+  // 4. Fit into the signature box at UPLOAD.PX_PER_PT pixels per point
+  const maxPxW = CONFIG.SIG_MAX_W_PT * UPLOAD.PX_PER_PT;
+  const maxPxH = CONFIG.SIG_MAX_H_PT * UPLOAD.PX_PER_PT;
+  const k = Math.min(maxPxW / cw, maxPxH / ch);
+  const pw = Math.max(1, Math.round(cw * k)), ph = Math.max(1, Math.round(ch * k));
+  const out = document.createElement("canvas");
+  out.width = pw; out.height = ph;
+  const o = out.getContext("2d");
+  o.fillStyle = "#ffffff";
+  o.fillRect(0, 0, pw, ph);
+  o.drawImage(src, minX, minY, cw, ch, 0, 0, pw, ph);
+
+  // 5. Size on the page: same rule as the drawn signature
+  const ratio = cw / ch;
+  let hPt = CONFIG.SIG_MAX_H_PT, wPt = hPt * ratio;
+  if (wPt > CONFIG.SIG_MAX_W_PT) { wPt = CONFIG.SIG_MAX_W_PT; hPt = wPt / ratio; }
+
+  const png = out.toDataURL("image/png");
+  return {
+    preview: png,
+    info: "original " + im.naturalWidth + "x" + im.naturalHeight + "px, ink " + cw + "x" + ch +
+          "px (ratio " + (cw / ch).toFixed(2) + "), placed " + wPt.toFixed(1) + " x " + hPt.toFixed(1) + " pt",
+    img: {
+      b64: png.split(",")[1],             // no data: prefix
+      wPt: Math.round(wPt * 10) / 10,
+      hPt: Math.round(hPt * 10) / 10
+    }
+  };
+}
+
+function showUpload(made) {
+  // Clear any drawing, hide the pad, and show the uploaded picture in its place
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  canvas.classList.remove("active");
+  canvas.hidden = true;
+  const pv = $("upPreview");
+  pv.src = made.preview;
+  pv.hidden = false;
+  upload = made.img;
+  upInfo = made.info;
+  hasSignature = true;
+  updateSignBtn();
+}
+
+async function onUploadPicked(file) {
+  if (!file) return;
+  const okType = UPLOAD.TYPES.indexOf(file.type) >= 0 || /\.(png|jpe?g)$/i.test(file.name || "");
+  if (!okType) { showStatus("Please choose a PNG or JPG image.", "error"); return; }
+  if (file.size > UPLOAD.MAX_BYTES) { showStatus("That image is over 2 MB. Choose a smaller file.", "error"); return; }
+  try {
+    const im = await loadImageFile(file);
+    showUpload(makeUploadImage(im));
+    showStatus("Signature image loaded. Check the preview, then tick the fields and sign.", "info");
+  } catch (e) {
+    showStatus(e.userMessage || "That image could not be used.", "error");
+    devError(e);
+  }
+}
+
 /* ---------- sign ---------- */
 async function doSign() {
   const email = $("emailInput").value.trim();
   if (!EMAIL_OK.test(email)) { showStatus("Please enter a valid email address.", "error"); return; }
-  if (!hasSignature) { showStatus("Please draw your signature first.", "error"); return; }
+  if (!hasSignature) { showStatus("Please draw or upload your signature first.", "error"); return; }
 
   const chosen = selectedFields();
   if (!chosen.length) { showStatus("Tick at least one field to sign.", "error"); return; }
 
   const img = getSignatureImage();
-  if (!img) { showStatus("Please draw your signature first.", "error"); return; }
+  if (!img) { showStatus("Please draw or upload your signature first.", "error"); return; }
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -553,10 +677,10 @@ async function doSign() {
 async function doSignHere() {
   const email = $("emailInput").value.trim();
   if (!EMAIL_OK.test(email)) { showStatus("Please enter a valid email address.", "error"); return; }
-  if (!hasSignature) { showStatus("Please draw your signature first.", "error"); return; }
+  if (!hasSignature) { showStatus("Please draw or upload your signature first.", "error"); return; }
 
   const img = getSignatureImage();
-  if (!img) { showStatus("Please draw your signature first.", "error"); return; }
+  if (!img) { showStatus("Please draw or upload your signature first.", "error"); return; }
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -607,7 +731,7 @@ function updateSignBtn() {
 
   let hint = "";
   if (!emailOk) hint = "Enter your email.";
-  else if (!hasSignature) hint = "Draw your signature.";
+  else if (!hasSignature) hint = "Draw or upload your signature.";
   else if (!n) hint = "Tick at least one field.";
   $("signHint").textContent = hint;
 }
@@ -693,7 +817,16 @@ function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
   canvas.classList.remove("active");
+  // Remove any uploaded image and show the drawing pad again
+  upload = null;
+  upInfo = "";
+  const pv = $("upPreview");
+  pv.removeAttribute("src");
+  pv.hidden = true;
+  canvas.hidden = false;
   hasSignature = false;
+  $("upFile").value = "";
+  sizeCanvas();                 // the pad was hidden, so size it again
   updateSignBtn();
   clearStatus();
 }
@@ -745,6 +878,7 @@ function setBusy(b) {
   busy = b;
   $("scanBtn").disabled = b;
   $("clearBtn").disabled = b;
+  $("uploadBtn").disabled = b;
   const h = $("signHereBtn");
   if (h) h.disabled = b;
   updateSignBtn();
@@ -788,6 +922,8 @@ function devReport(ms) {
   L.push("Student " + s.student + " (reassess " + s.reStudent + ")   Assessor " + s.assessor +
          " (reassess " + s.reAssessor + ")   guessed " + s.guessed + "   signed " + s.signed);
   L.push("");
+  L.push("Upload " + (upload ? upInfo : "none"));
+  L.push("");
   L.push("flags: R=reassess G=guessed S=signed P=other picture   width = next cell width in pt");
   f.forEach((x, n) => {
     const flags = (x.isReassessment ? "R" : "-") + (x.guessed ? "G" : "-") +
@@ -824,6 +960,12 @@ Office.onReady(info => {
   initEmail();
   initCanvas();
   $("clearBtn").addEventListener("click", clearCanvas);
+  $("uploadBtn").addEventListener("click", () => $("upFile").click());
+  $("upFile").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";        // lets the same file be chosen again
+    onUploadPicked(f);
+  });
   $("scanBtn").addEventListener("click", () => guarded(() => runScan(false)));
   $("signBtn").addEventListener("click", () => guarded(doSign));
 
