@@ -1,9 +1,11 @@
 "use strict";
 
 /* =============================================================
-   Word Signature Add-in - DEV build, Step 3f2 (+ dark mode)
+   Word Signature Add-in - DEV build, Step 3f3 (+ dark mode)
    NCCS CADCAM
    Scan any record book -> choose fields -> draw or upload -> sign.
+   Step 3f3: a guessed "Signature" line is ticked by default only
+   when its nearby label is Student. Assessor guesses stay unticked.
    Step 3f2: upload size log in the Developer box.
    Step 3f: adds "Upload image" (PNG or JPG) as an alternative to drawing.
    Step 3e: adds "Sign here (cursor)" to sign the spot the cursor is in.
@@ -12,7 +14,7 @@
 
 /* ---------- CONFIG: all wording and rules in one place ---------- */
 const CONFIG = {
-  BUILD: "step3f2",      // shown at the end of the Developer box first line
+  BUILD: "step3f3",      // shown at the end of the Developer box first line
   MAX_LINE: 60,          // longer lines are never labels or headings
   MAX_PLAIN_SIG: 25,     // a role-less "Signature" line must be this short to be guessed
   LOOKBACK: 8,           // non-empty lines to look back for a role word
@@ -320,7 +322,9 @@ async function scanFields(context) {
     f.signed = !!sig;
     f.signedBy = sig ? (sig.altTextDescription.split("|")[2] || "") : "";
     f.otherPics = pics.filter(p => !isSigPic(p)).length;
-    f.ticked = !f.isReassessment && !f.guessed && !f.signed;
+    // Step3f3: a guessed "Signature" line is ticked by default only when
+    // its nearby label is Student. Assessor guesses stay unticked.
+    f.ticked = !f.isReassessment && !f.signed && (!f.guessed || f.role === "student");
   });
 
   return { fields: fields, paraCount: lines.length };
